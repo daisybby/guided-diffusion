@@ -1,3 +1,19 @@
+# Copyright (c) 2022 Huawei Technologies Co., Ltd.
+# Licensed under CC BY-NC-SA 4.0 (Attribution-NonCommercial-ShareAlike 4.0 International) (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+#
+# The code is released for academic research use only. For commercial use, please contact Huawei Technologies Co., Ltd.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# This repository was forked from https://github.com/openai/guided-diffusion, which is under the MIT license
+
 """
 Helpers to train with 16-bit precision.
 """
@@ -7,7 +23,6 @@ import torch as th
 import torch.nn as nn
 from torch._utils import _flatten_dense_tensors, _unflatten_dense_tensors
 
-from . import logger
 
 INITIAL_LOG_LOSS_SCALE = 20.0
 
@@ -187,17 +202,12 @@ class MixedPrecisionTrainer:
             return self._optimize_normal(opt)
 
     def _optimize_fp16(self, opt: th.optim.Optimizer):
-        logger.logkv_mean("lg_loss_scale", self.lg_loss_scale)
         model_grads_to_master_grads(self.param_groups_and_shapes, self.master_params)
         grad_norm, param_norm = self._compute_norms(grad_scale=2 ** self.lg_loss_scale)
         if check_overflow(grad_norm):
             self.lg_loss_scale -= 1
-            logger.log(f"Found NaN, decreased lg_loss_scale to {self.lg_loss_scale}")
             zero_master_grads(self.master_params)
             return False
-
-        logger.logkv_mean("grad_norm", grad_norm)
-        logger.logkv_mean("param_norm", param_norm)
 
         for p in self.master_params:
             p.grad.mul_(1.0 / (2 ** self.lg_loss_scale))
@@ -209,8 +219,6 @@ class MixedPrecisionTrainer:
 
     def _optimize_normal(self, opt: th.optim.Optimizer):
         grad_norm, param_norm = self._compute_norms()
-        logger.logkv_mean("grad_norm", grad_norm)
-        logger.logkv_mean("param_norm", param_norm)
         opt.step()
         return True
 
